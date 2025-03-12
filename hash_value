@@ -1,0 +1,47 @@
+import hashlib
+import os
+import json
+
+class FileMonitor:
+    def __init__(self, file_path, hash_algorithm='sha256'):
+        self.file_path = file_path
+        self.hash_algorithm = hash_algorithm
+        self.hash_db_path = f"{file_path}.hash_db.json"
+        self.load_hash_db()
+
+    def load_hash_db(self):
+        if os.path.exists(self.hash_db_path):
+            with open(self.hash_db_path, 'r') as file:
+                self.hash_db = json.load(file)
+        else:
+            self.hash_db = {}
+
+    def save_hash_db(self):
+        with open(self.hash_db_path, 'w') as file:
+            json.dump(self.hash_db, file)
+
+    def calculate_hash(self, file_path):
+        hash_func = hashlib.new(self.hash_algorithm)
+        with open(file_path, 'rb') as file:
+            while chunk := file.read(8192):
+                hash_func.update(chunk)
+        return hash_func.hexdigest()
+
+    def monitor_file(self):
+        current_hash = self.calculate_hash(self.file_path)
+        if self.file_path in self.hash_db:
+            previous_hash = self.hash_db[self.file_path]
+            if current_hash != previous_hash:
+                print(f"File '{self.file_path}' has changed.")
+            else:
+                print(f"File '{self.file_path}' has not changed.")
+        else:
+            print(f"File '{self.file_path}' is being monitored for the first time.")
+        self.hash_db[self.file_path] = current_hash
+        self.save_hash_db()
+
+# Example usage
+if __name__ == "__main__":
+    file_path = 'example.txt'
+    monitor = FileMonitor(file_path)
+    monitor.monitor_file()
